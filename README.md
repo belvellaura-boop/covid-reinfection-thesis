@@ -13,7 +13,7 @@ Master's thesis project on COVID-19 reinfection using competing risks and multis
 - ICU_State.Rmd: ICU discharged patients
 - Hospital_State.Rmd: Hospitalized patients without ICU admission
 - Home_State.Rmd: Home-managed patients
-- General_Model.Rmd: Combined analysis of all states
+- Global_Model.Rmd: Combined analysis of all states
 
 ## Software
 
