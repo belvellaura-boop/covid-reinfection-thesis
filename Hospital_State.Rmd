@@ -1,0 +1,992 @@
+---
+title: "Results from hospital event"
+author: "Laura Belmonte"
+date: "2026-04-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(cmprsk)
+library(Hmisc)
+library(mstate)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(tidyr)
+```
+
+# Hospital
+
+```{r}
+load("~/Documents/2025-2026/second semester/tfg/datos_tfg/hospital.RData")
+```
+
+```{r}
+hospital<-hospital[,c(1:12)]
+hospital<-hospital[,-9]
+summary(hospital)
+```
+
+```{r}
+variables_interes <- hospital %>% 
+  select(age, polimed, delta, charlson, quintil, sex)
+
+# Resumen estadístico
+summary(variables_interes)
+
+# Categorización de edad
+hospital$age_cat <- cut(hospital$age,
+                     breaks = c(0, 40, 60, 75, 100),
+                     labels = c("<40", "40-60", "60-75", ">75"))
+
+#print(table(hospital$age_cat))
+print(prop.table(table(hospital$age_cat)) * 100)
+```
+## Polymedication
+
+```{r}
+cat("Frecuencias absolutas:\n")
+print(table(hospital$polimed))
+cat("\nProporciones:\n")
+print(prop.table(table(hospital$polimed)) * 100)
+```
+
+## Events 
+```{r}
+
+print(prop.table(table(hospital$delta)) * 100)
+
+# Crear variable más descriptiva
+hospital$event_type <- factor(hospital$delta,
+                           levels = c(0, 1, 2),
+                           labels = c("Censored", "Reinfection", "Death"))
+
+print(table(hospital$event_type))
+
+```
+
+## Charlson index
+```{r}
+
+# Distribución por categorías
+if(!"charlson_cat" %in% names(hospital)) {
+  hospital$charlson_cat <- cut(hospital$charlson,
+                            breaks = c(-1, 0, 2, 5, 20),
+                            labels = c("0", "1-2", "3-5", ">5"))
+}
+
+#print(table(hospital$charlson_cat))
+print(prop.table(table(hospital$charlson_cat)) * 100)
+```
+
+## Quintil, socioeconomic factor
+```{r}
+
+print(table(hospital$quintil))
+print(prop.table(table(hospital$quintil)) * 100)
+
+```
+
+# Variables vs events
+```{r}
+
+# Age
+
+print(tapply(hospital$age, hospital$event_type, summary))
+
+# Polymedication
+
+print(table(hospital$polimed, hospital$event_type))
+print(prop.table(table(hospital$polimed, hospital$event_type), 1) * 100)
+
+# Charlson index
+
+print(tapply(hospital$charlson, hospital$event_type, summary))
+
+# Quintil 
+
+print(table(hospital$quintil, hospital$event_type))
+print(prop.table(table(hospital$quintil, hospital$event_type), 1) * 100)
+```
+
+## Sex
+```{r}
+
+print(table(hospital$sex))
+print(prop.table(table(hospital$sex)) * 100)
+print(tapply(hospital$age, hospital$sex, summary))
+
+print(table(hospital$sex, hospital$event_type))
+print(prop.table(table(hospital$sex, hospital$event_type), 1) * 100)
+
+# resume
+tabla_resumen <- hospital %>%
+  group_by(event_type) %>%
+  summarise(
+    N = n(),
+    Edad_media = mean(age, na.rm = TRUE),
+    Edad_sd = sd(age, na.rm = TRUE),
+    Charlson_mediana = median(charlson, na.rm = TRUE),
+    Charlson_IQR = IQR(charlson, na.rm = TRUE),
+    Pct_Polimed = sum(polimed == "Si", na.rm = TRUE) / n() * 100,
+    Pct_Hombre = sum(sex == "Hombre", na.rm = TRUE) / n() * 100
+  )
+
+print(tabla_resumen)
+```
+
+## graphs 
+```{r}
+
+# Histograma de edad
+p1 <- ggplot(hospital, aes(x = age)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black") +
+  labs(title = "Age distribution", x = "Age (years)", y = "Frequancy") +
+  theme_minimal()
+
+# Distribución de Charlson
+p2 <- ggplot(hospital, aes(x = charlson)) +
+  geom_histogram(bins = 15, fill = "coral", color = "black") +
+  labs(title = "Charlson Index Distribution", 
+       x = "Charlson Index", y = "Frequency") +
+  theme_minimal()
+
+library(patchwork)
+fin <- p1 + p2
+
+# Guardar
+ggsave(
+  "dists_hosp.png",
+  plot = fin,
+  width = 12,
+  height = 5,
+  dpi = 300
+)
+
+# Barplot de eventos
+p3 <- ggplot(hospital, aes(x = event_type, fill = event_type)) +
+  geom_bar() +
+  labs(title = "Events distribution", x = "Types of events", y = "Frequency") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave(
+  filename = "events_dist_hosp_bar.png",
+  plot = p3,
+  width = 8,
+  height = 4,
+  dpi = 300
+)
+
+
+# Edad por evento
+p4 <- ggplot(hospital, aes(x = event_type, y = age, fill = event_type)) +
+  geom_boxplot() +
+  labs(title = "Age by type of Event", 
+       x = "Type of event", y = "Age (years)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Mostrar gráficos
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+p5 <- ggplot(hospital, aes(x = factor(period), fill = factor(period))) +
+  geom_bar() +
+  labs(
+    title = "Period distribution",
+    x = "hospital Period",
+    y = "Frequency"
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+
+# 6. Charlson categorizado por evento
+p6 <- ggplot(hospital, aes(x = event_type, fill = charlson_cat)) +
+  geom_bar(position = "fill") +
+  labs(title = "Charlson Index by event", 
+       x = "Event", 
+       y = "Proportion",
+       fill = "Charlson") +
+  scale_fill_brewer(palette = "YlOrRd") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 16),
+    axis.title = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(size = 12)
+  )
+
+p8<-dat %>%
+  filter(outcome == "Reinfection") %>%
+  ggplot(aes(x = hsptime, y = age)) +
+  geom_density_2d_filled(alpha = 0.7) +
+  labs(
+    title = "2D Density of Age and hospital time — Reinfection only",
+    x     = "hospital time",
+    y     = "Age",
+    fill  = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "right")
+
+fin <- p6 + p8
+
+# Guardar
+ggsave(
+  "relations_hosp.png",
+  plot = fin,
+  width = 12,
+  height = 5,
+  dpi = 300
+)
+
+grid.arrange(p5, p6, ncol = 2)
+```
+
+# relationships
+
+```{r data}
+dat <- hospital %>%
+  mutate(
+    outcome = case_when(
+      delta == 0 ~ "Censored",
+      delta == 1 ~ "Reinfection",
+      delta == 2 ~ "Death"
+    ),
+    outcome = factor(outcome, levels = c("Censored", "Reinfection", "Death"))
+  )
+```
+
+
+```{r plot_overlap, fig.width=9, fig.height=5}
+p9<-dat %>%
+  pivot_longer(cols = hsptime,
+               names_to = "time_point", 
+               values_to = "time") %>%    
+  mutate(time_point = recode(time_point,
+                             "hsptime" = "hospital time")) %>%  
+  ggplot(aes(x = time, fill = outcome)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~time_point, ncol = 1) +
+  scale_fill_manual(
+    values = c("Censored"    = "#6C757D",
+               "Reinfection" = "#3A86FF",
+               "Death"       = "#E63946")
+  ) +
+  labs(
+    title = "Distribution of hospital time by Outcome",
+    x     = "Time",
+    y     = "Density",
+    fill  = "Outcome (delta)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+ggsave(
+  filename = "corr_hosp.png",
+  plot = p9,
+  width = 8,
+  height = 4,
+  dpi = 300
+)
+```
+
+
+## age
+
+```{r}
+p8<-dat %>%
+  filter(outcome == "Reinfection") %>%
+  ggplot(aes(x = hsptime, y = age)) +
+  geom_density_2d_filled(alpha = 0.7) +
+  labs(
+    title = "2D Density of Age and hospital time — Reinfection only",
+    x     = "hospital time",
+    y     = "Age",
+    fill  = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "right")
+
+
+```
+
+```{r}
+dat %>%
+  filter(outcome == "Reinfection") %>%
+  mutate(hosp_group = cut(hsptime, breaks = 4)) %>%
+  ggplot(aes(x = age, fill = hosp_group)) +
+  geom_density(alpha = 0.4) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Age Distribution by hospital time group — Reinfection only",
+    x     = "Age",
+    y     = "Density",
+    fill  = "Reinfection interval"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+```
+
+```{r}
+dat %>%
+  filter(outcome == "Reinfection") %>%
+  select(where(is.numeric), -delta) %>%
+  cor() %>%
+  round(2)
+```
+
+```{r,warning=FALSE}
+library(corrplot)
+
+png("relation_hosp.png", width = 2400, height = 1800, res = 300)
+
+corrplot(
+  cor(
+    dat %>%
+      filter(outcome == "Reinfection") %>%
+      select(where(is.numeric), -delta, -numreg, -quintil, -period, -polimed)
+  ),
+  method = "color",
+  type = "upper",
+  addCoef.col = "black",
+  tl.col = "black",
+  tl.srt = 45,
+  col = colorRampPalette(c("#E63946", "white", "#3A86FF"))(200),
+  diag = FALSE
+)
+
+dev.off()
+```
+
+```{r,warning=FALSE}
+library(ggcorrplot)
+
+dat %>%
+  filter(outcome == "Death") %>%
+  select(where(is.numeric), -delta) %>%
+  cor() %>%
+  round(2) %>%
+  ggcorrplot(
+    method      = "circle",      # "square" para cuadrados
+    type        = "upper",
+    lab         = TRUE,          # muestra valores
+    lab_size    = 3,
+    colors      = c("#E63946", "white", "#3A86FF"),
+    title       = "Correlacions — Reinfection",
+    ggtheme     = theme_minimal(base_size = 12)
+  )
+```
+
+
+
+# Competing risk
+
+```{r}
+library(cmprsk)
+# Incidencia acumulada básica
+ci_result <- with(hospital, cuminc(stime0, delta))
+
+# Ver resultados con más detalle (10 puntos temporales, 2 decimales)
+print(ci_result, ntp = 10, digits = 2)
+
+# Análisis de incidencia acumulada
+with(hospital, cuminc(stime0, delta))
+
+# Imprimir con más detalle
+with(hospital, print(cuminc(stime0, delta), ntp = 10, digits = 2))
+
+# Gráfico mejorado con personalización
+with(hospital, {
+  ci <- cuminc(stime0, delta)
+  ci2 <- ci[grep("1 1", names(ci))] # Survival curve
+
+  plot(ci2, 
+       ylim = c(0, 0.12),
+       yaxt = "n",  
+       xlab = "Days from day 120",
+       ylab = "Cumulative Incidence",
+       main = "CIF for reinfection ",
+       col =  "red", 
+       curvlab="reinfection of hospital",
+       lwd = 2
+  )
+  
+  axis(2, at = seq(0, 0.12, by = 0.01), las = 1)
+  
+  # Añadir grid para mejor lectura
+  grid(nx = NULL, ny = NULL, lty = 2, col = "gray90")
+})
+```
+```{r}
+library(cmprsk)
+library(ggplot2)
+
+with(hospital, {
+
+  # Incidencia acumulada
+  ci <- cuminc(stime0, delta)
+
+  # Evento 1 = reinfección
+  ci2 <- ci[["1 1"]]
+
+  # Data frame para ggplot
+  df <- data.frame(
+    time = ci2$time,
+    est  = ci2$est
+  )
+
+  # Gráfico
+  p <- ggplot(df, aes(x = time, y = est)) +
+    geom_step(
+      color = "red",
+      linewidth = 1,
+      show.legend = FALSE
+    ) +
+    scale_y_continuous(
+      limits = c(0, 0.12),
+      breaks = seq(0, 0.12, by = 0.01),
+      labels = sprintf("%.2f", seq(0, 0.12, by = 0.01))
+    ) +
+    scale_x_continuous(
+      limits = c(0, max(df$time) + 10),
+      breaks = seq(0, 600, by = 100)
+    ) +
+    labs(
+      x = "Days from day 120",
+      y = "Cumulative Incidence"
+    ) +
+    theme_classic() +
+    theme(
+      legend.position = "none",
+      panel.grid.major = element_line(
+        linetype = "dashed",
+        color = "gray80"
+      ),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "black"),
+      plot.title = element_text(hjust = 0.5)
+    )
+
+  # Mostrar gráfico
+  print(p)
+
+  # Guardar en alta resolución
+  ggsave(
+    filename = "hospital_reinfection_cif.png",
+    plot = p,
+    width = 8,
+    height = 6,
+    dpi = 300
+  )
+
+})
+```
+
+```{r,warning=FALSE,message=FALSE}
+library(cmprsk)
+
+# ============================================================
+# 1. ESTRATIFICADO POR PERÍODO hospital
+# ============================================================
+
+# Crear objeto de incidencia acumulada FUERA del with()
+ci_period <- with(hospital, cuminc(stime0, delta, group = period))
+
+# Ahora sí puedes graficar dentro del with()
+with(hospital, {
+  ci_period_re <- ci_period[grep("1$", names(ci_period))]
+  
+  plot(ci_period_re, 
+       ylim = c(0, 0.15),
+       color = c(1, 2, 3),
+       lty = c(1, 1, 1),
+       curvlab=c("period1", "period2", "period3"),
+       lwd = 3, 
+       cex = 1.2,
+       xlab = "Days from day 120",
+       ylab = "Cumulative Incidence")
+})
+png("cumulative_incidence_period_hosp.png", width = 2400, height = 1800, res = 300)
+# ============================================================
+# 2. ESTRATIFICADO POR ÍNDICE DE CHARLSON
+# ============================================================
+
+hospital$charlson_cat <- cut(hospital$charlson,
+                          breaks = c(-1, 0, 2, 5, 20),
+                          labels = c("0", "1-2", "3-5", ">5"))
+
+# CREAR FUERA
+ci_charlson <- with(hospital, cuminc(stime0, delta, group = charlson_cat))
+
+# GRAFICAR DENTRO
+with(hospital, {
+  ci_charlson_re <- ci_charlson[grep("1$", names(ci_charlson))]
+  
+  plot(ci_charlson_re,
+       ylim = c(0, 0.2),
+       color = c(1, 2, 3, 4),
+       lty = c(1, 1, 1, 1),
+       lwd = 3,
+       cex = 1.2,
+       curvlab=c("0","1-2","3-5",">5"),
+       xlab = "Days from day 120",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "CIF for reinfection by Charlson Comorbidity Index")
+})
+
+# ============================================================
+# 3. QUINTIL
+# ============================================================
+
+ci_quintil <- with(hospital, cuminc(stime0, delta, group = quintil))
+
+with(hospital, {
+  ci_quintil_re <- ci_quintil[grep("1$", names(ci_quintil))]
+  
+  plot(ci_quintil_re,
+       ylim = c(0, 0.4),
+       color = c(1, 2, 3, 4, 5),
+       lty = c(1, 1, 1, 1, 1),
+       lwd = 3,
+       cex = 1.2,
+       curvlab=c("1","2","3","4","5"),
+       xlab = "Days from day 120",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "CIF for reinfection by Socioeconomic Quintile")
+})
+
+# ============================================================
+# 4. POLIMEDICACIÓN
+# ============================================================
+
+ci_polimed <- with(hospital, cuminc(stime0, delta, group = polimed))
+
+with(hospital, {
+  ci_polimed_re <- ci_polimed[grep("1$", names(ci_polimed))]
+  
+  plot(ci_polimed_re,
+       ylim = c(0, 0.5),
+       color = c(1, 2),   
+       lty = c(1, 1),
+       lwd = 3,
+       cex = 1.2,
+       xlab = "Days from day 120",
+       curvlab=c("Polymedication: No", "Polymadication: Yes"),
+       ylab = "Cumulative Incidence")
+  
+  title(main = "CIF for reinfection by Polymedication Status")
+})
+
+# ============================================================
+# 6. SEXO
+# ============================================================
+
+ci_sex <- with(hospital, cuminc(stime0, delta, group = sex))
+
+with(hospital, {
+  cmpsex <- ci_sex[grep("1$", names(ci_sex))]
+  
+  par(las = 1, font = 2, font.lab = 2, font.axis = 2)
+  plot(cmpsex,
+       ylim = c(0, 0.17),
+       color = c(1, 2),
+       lty = c(1, 1),
+       curvlab = c("Female: Reinfection", "Male: Reinfection"),
+       lwd = 3,
+       cex = 1.2,
+       xlab = "Days from day 120",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "CIF for reinfection by Sex")
+})
+
+# ============================================================
+# 8. RESUMEN
+# ============================================================
+
+cat("\n=== SUMMARY OF GRAY'S TESTS ===\n\n")
+
+cat("PERIOD:\n")
+print(ci_period$Tests)
+cat("\n")
+
+cat("CHARLSON:\n")
+print(ci_charlson$Tests)
+cat("\n")
+
+cat("QUINTILE:\n")
+print(ci_quintil$Tests)
+cat("\n")
+
+cat("POLYMEDICATION:\n")
+print(ci_polimed$Tests)
+cat("\n")
+
+cat("SEX:\n")
+print(ci_sex$Tests)
+cat("\n")
+
+```
+
+### Commpeting risk with hsptime 
+
+```{r}
+summary(hospital$hsptime)
+ggplot(hospital, aes(x = hsptime)) +
+  geom_histogram(bins = 50, fill = "darkgreen", color = "black", alpha = 0.7) +
+  labs(title = "Time distribution for hospital",
+       x = "Days of Hospitalization", 
+       y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+```{r}
+ggplot(hospital, aes(x = event_type, y = hsptime, fill = event_type)) +geom_boxplot() +labs(title = "Hospital time by type of Event",x = "Type of event", y = "time in the hospital") +theme_minimal() +theme(legend.position = "none")
+```
+
+```{r,warning=FALSE, message=FALSE}
+library(cmprsk)
+# Incidencia acumulada básica
+ci_result <- with(hospital, cuminc(hsptime, delta))
+
+print(ci_result, ntp = 10, digits = 2)
+
+# Análisis de incidencia acumulada
+with(hospital, cuminc(hsptime, delta))
+
+# Imprimir con más detalle
+with(hospital, print(cuminc(hsptime, delta), ntp = 10, digits = 2))
+
+# Gráfico mejorado con personalización
+with(hospital, {
+  ci <- cuminc(hsptime, delta)
+  ci2 <- ci[grep("1 1", names(ci))] # Survival curve
+
+  plot(ci2, 
+       ylim = c(0, 0.2),
+       yaxt = "n",  
+       xlab = "Days of hospital",
+       ylab = "Cumulative Incidence",
+       main = "Cumulative Incidence of Reinfection from hospital days",
+       col = c("blue", "red"), curvlab="Reinfection", # Colores para reinfección y muerte
+       lwd = 2
+  )
+  
+  axis(2, at = seq(0, 0.2, by = 0.02), las = 1)
+  
+  # Añadir grid para mejor lectura
+  grid(nx = NULL, ny = NULL, lty = 2, col = "gray90")
+})
+library(cmprsk)
+
+# ============================================================
+# 1. ESTRATIFICADO POR PERÍODO hospital
+# ============================================================
+
+# Crear objeto de incidencia acumulada FUERA del with()
+ci_period <- with(hospital, cuminc(hsptime, delta, group = period))
+
+# Ahora sí puedes graficar dentro del with()
+with(hospital, {
+  ci_period_re <- ci_period[grep("1$", names(ci_period))]
+  
+  plot(ci_period_re, 
+       ylim = c(0, 0.5),
+       color = c(1, 2, 3),
+       lty = c(1, 1, 1), 
+       lwd = 3, 
+       cex = 1.2,
+       xlab = "Days at the hospital",
+       curvlab=c("Period1","Period2","Period3"),
+       ylab = "Cumulative Incidence")
+  
+  title(main = "Cumulative Incidence by hospital Period")
+})
+
+# ============================================================
+# 2. ESTRATIFICADO POR ÍNDICE DE CHARLSON
+# ============================================================
+
+hospital$charlson_cat <- cut(hospital$charlson,
+                          breaks = c(-1, 0, 2, 5, 20),
+                          labels = c("0", "1-2", "3-5", ">5"))
+
+# CREAR FUERA
+ci_charlson <- with(hospital, cuminc(hsptime, delta, group = charlson_cat))
+
+# GRAFICAR DENTRO
+with(hospital, {
+  ci_charlson_re <- ci_charlson[grep("1$", names(ci_charlson))]
+  
+  plot(ci_charlson_re,
+       ylim = c(0, 0.3),
+       color = c(1, 2, 3, 4),
+       lty = c(1, 1, 1, 1),
+       curvlab=c("0","1-2","3-5",">5"),
+       lwd = 3,
+       cex = 1.2,
+       xlab = "Days at the hospital",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "Cumulative Incidence by Charlson Comorbidity Index, hospital time")
+})
+
+# ============================================================
+# 3. QUINTIL
+# ============================================================
+
+ci_quintil <- with(hospital, cuminc(hsptime, delta, group = quintil))
+
+with(hospital, {
+  ci_quintil_re <- ci_quintil[grep("1$", names(ci_quintil))]
+  
+  plot(ci_quintil_re,
+       ylim = c(0, 0.35),
+       color = c(1, 2, 3, 4, 5),
+       lty = c(1, 1, 1, 1, 1),
+       lwd = 3,
+       cex = 1.2,
+       curvlab=c("1","2","3","4","5"),
+       xlab = "Days at the hospital",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "Cumulative Incidence by Socioeconomic Quintile, hospital time")
+})
+
+# ============================================================
+# 4. POLIMEDICACIÓN
+# ============================================================
+
+ci_polimed <- with(hospital, cuminc(hsptime, delta, group = polimed))
+
+with(hospital, {
+  ci_polimed_re <- ci_polimed[grep("1$", names(ci_polimed))]
+  
+  plot(ci_polimed_re,
+       ylim = c(0, 0.25),
+       color = c(1, 2),   
+       lty = c(1, 1),
+       lwd = 3,
+       cex = 1.2,
+       curvlab=c("Polymadication: No", "Polymadication=Yes"),
+       xlab = "Days hospital",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "Cumulative Incidence by Polymedication Status, hospital time")
+})
+
+# ============================================================
+# 6. SEXO
+# ============================================================
+
+ci_sex <- with(hospital, cuminc(hsptime, delta, group = sex))
+
+with(hospital, {
+  cmpsex <- ci_sex[grep("1$", names(ci_sex))]
+  
+  par(las = 1, font = 2, font.lab = 2, font.axis = 2)
+  plot(cmpsex,
+       ylim = c(0, 0.25),
+       color = c(1, 2),
+       lty = c(1, 1),
+       curvlab = c("Female: Reinfection", "Male: Reinfection"),
+       lwd = 3,
+       cex = 1.2,
+       xlab = "Days from day 120",
+       ylab = "Cumulative Incidence")
+  
+  title(main = "Late Events by Sex")
+})
+
+```
+
+```{r}
+library(broom)
+library(knitr)
+library(kableExtra)
+library(survival)
+
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil+hsptime+polimed, 
+                  data = hospital)
+
+# Extract results
+resultados <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = resultados$term,
+  Beta = round(resultados$estimate, 3),
+  SE = round(resultados$std.error, 3),
+  CI_lower = round(resultados$conf.low, 3),
+  CI_upper = round(resultados$conf.high, 3),
+  Z_stat = round(resultados$statistic, 2),
+  p_value = ifelse(resultados$p.value < 0.001, "<0.001", 
+                   round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox, 
+      caption = "Cox Model for hospital-19 Reinfection",
+      align = c('l', rep('c', 6)),
+      col.names = c("Variable", "Est.", "SE", "CI Low", "CI Up", "Z", "p"),
+      format = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position = "center",
+                font_size = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "2cm") %>%
+  column_spec(2:7, width = "1.5cm") %>%
+  footnote(general = paste("n =", causmod1$n, 
+                          "; Events =", causmod1$nevent,
+                          "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+```{r}
+library(broom)
+library(knitr)
+library(kableExtra)
+library(survival)
+
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil+polimed,
+                  data = hospital)
+
+# Extract results
+resultados <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = resultados$term,
+  Beta = round(resultados$estimate, 3),
+  SE = round(resultados$std.error, 3),
+  CI_lower = round(resultados$conf.low, 3),
+  CI_upper = round(resultados$conf.high, 3),
+  Z_stat = round(resultados$statistic, 2),
+  p_value = ifelse(resultados$p.value < 0.001, "<0.001", 
+                   round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox, 
+      caption = "Cox Model for hospital-19 Reinfection",
+      align = c('l', rep('c', 6)),
+      col.names = c("Variable", "Est.", "SE", "CI Low", "CI Up", "Z", "p"),
+      format = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position = "center",
+                font_size = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "2cm") %>%
+  column_spec(2:7, width = "1.5cm") %>%
+  footnote(general = paste("n =", causmod1$n, 
+                          "; Events =", causmod1$nevent,
+                          "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+## Death
+
+
+```{r}
+library(broom)
+library(knitr)
+library(kableExtra)
+library(survival)
+
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil+hsptime+polimed, 
+                  data = hospital)
+
+# Extract results
+resultados <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = resultados$term,
+  Beta = round(resultados$estimate, 3),
+  SE = round(resultados$std.error, 3),
+  CI_lower = round(resultados$conf.low, 3),
+  CI_upper = round(resultados$conf.high, 3),
+  Z_stat = round(resultados$statistic, 2),
+  p_value = ifelse(resultados$p.value < 0.001, "<0.001", 
+                   round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox, 
+      caption = "Cox Model for hospital-19 Death",
+      align = c('l', rep('c', 6)),
+      col.names = c("Variable", "Est.", "SE", "CI Low", "CI Up", "Z", "p"),
+      format = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position = "center",
+                font_size = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "2cm") %>%
+  column_spec(2:7, width = "1.5cm") %>%
+  footnote(general = paste("n =", causmod1$n, 
+                          "; Events =", causmod1$nevent,
+                          "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+```{r}
+library(broom)
+library(knitr)
+library(kableExtra)
+library(survival)
+
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil+polimed,
+                  data = hospital)
+
+# Extract results
+resultados <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = resultados$term,
+  Beta = round(resultados$estimate, 3),
+  SE = round(resultados$std.error, 3),
+  CI_lower = round(resultados$conf.low, 3),
+  CI_upper = round(resultados$conf.high, 3),
+  Z_stat = round(resultados$statistic, 2),
+  p_value = ifelse(resultados$p.value < 0.001, "<0.001", 
+                   round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox, 
+      caption = "Cox Model for hospital-19 Death",
+      align = c('l', rep('c', 6)),
+      col.names = c("Variable", "Est.", "SE", "CI Low", "CI Up", "Z", "p"),
+      format = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position = "center",
+                font_size = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "2cm") %>%
+  column_spec(2:7, width = "1.5cm") %>%
+  footnote(general = paste("n =", causmod1$n, 
+                          "; Events =", causmod1$nevent,
+                          "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+

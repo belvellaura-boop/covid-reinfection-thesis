@@ -1,0 +1,875 @@
+---
+title: "all model"
+author: "Laura Belmonte"
+date: "2026-04-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(cmprsk)
+library(Hmisc)
+library(mstate)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(broom)
+library(knitr)
+library(kableExtra)
+library(survival)
+```
+
+```{r}
+load("~/Documents/2025-2026/second semester/tfg/datos_tfg/TFGdata.RData")
+cov<-bbdd4cr
+summary(cov)
+```
+
+# Period vs group
+
+```{r}
+ggplot(cov, aes(x = period, fill = group)) +
+  geom_bar(position = "fill") +
+  labs(title = "Period by group", 
+       x = "period", 
+       y = "group of stat",
+       fill = "Charlson") +
+  scale_fill_brewer(palette = "YlOrRd") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 16),
+    axis.title = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(size = 12)
+  )
+```
+# Cox model: ICU 
+
+```{r}
+load("~/Documents/2025-2026/second semester/tfg/datos_tfg/DataReinfection.RData")
+icu<-bbdd4cr
+```
+
+```{r}
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil + hsptime + icutime, 
+                  data = icu)
+
+label<- c(
+  sexMujer      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  hsptime  = "Hospital Stay (days)",
+  icutime  = "ICU Stay (days)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: ICU Reinfection",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+just hospital time
+```{r}
+library(broom)
+library(knitr)
+library(kableExtra)
+library(survival)
+
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil + hsptime, 
+                  data = icu)
+
+label<- c(
+  sexMujer      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  hsptime  = "Hospital Stay (days)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      #caption = "Cox Model for COVID-19: ICU Reinfection",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+
+
+Just ICU time
+
+```{r}
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil +  icutime, 
+                  data = icu)
+
+label<- c(
+  sexMujer      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  icutime  = "ICU Stay (days)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      #caption = "Cox Model for COVID-19: ICU Reinfection",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+```{r}
+cor(icu$icutime,icu$hsptime)
+```
+
+##  death event 
+
+```{r}
+# Cox model for reinfection (event = 2)
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + icutime, 
+                  data = icu)
+
+label<- c(
+  sex      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  icutime  = "ICU Stay (days)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: ICU Death",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+
+```{r}
+# Cox model for reinfection (event = 2)
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + hsptime + icutime, 
+                  data = icu)
+
+label<- c(
+  sex      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  hsptime  = "Hospital Stay (days)",
+  icutime  = "ICU Stay (days)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: ICU Death",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+
+```{r}
+# Cox model for reinfection (event = 2)
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + hsptime, 
+                  data = icu)
+
+label<- c(
+  sex      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  hsptime  = "Hospital Stay (days)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: ICU Death",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+
+# Cox model: Hospital 
+
+```{r}
+load("~/Documents/2025-2026/second semester/tfg/datos_tfg/hospital.RData")
+hospital<-hospital[,c(1:12)]
+hospital<-hospital[,-9]
+summary(hospital)
+```
+
+## Reinfection
+
+```{r}
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil + hsptime+polimed, 
+                  data = hospital)
+
+label<- c(
+  sexFemale      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  hsptime  = "Hospital Stay (days)",
+  polimed  = "Polymedication (yes)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: Hospital Reinfection",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+
+```{r}
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil +polimed, 
+                  data = hospital)
+
+label<- c(
+  sexFemale      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  polimed  = "Polymedication (yes)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: Hospital Reinfection",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+## Death
+
+
+```{r}
+# Cox model for reinfection (event = 2)
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + polimed, 
+                  data = hospital)
+
+label<- c(
+  sexFemale      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  polimed  = "Polymedication (yes)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: Hospital Death",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+# Cox model: No hospital
+
+```{r}
+load("~/Documents/2025-2026/second semester/tfg/datos_tfg/home.RData")
+home<-home[,c(1:12)] 
+home<-home[,-c(8,9)] #Hospital and ICU time
+```
+
+## Reinfection
+
+```{r}
+# Cox model for reinfection (event = 1)
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil+polimed, 
+                  data = home)
+
+label<- c(
+  sexMujer      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  polimed  = "Polymedication (yes)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: Home Reinfection",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+## Death 
+
+
+```{r}
+# Cox model for reinfection (event = 2)
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + polimed, 
+                  data = home)
+
+label<- c(
+  sexMujer      = "Sex (female)",
+  age      = "Age (years)",
+  charlson = "CCI",
+  quintil  = "Socioeconomic Quintile",
+  polimed  = "Polymedication (yes)"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(label),
+               label[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption = "Cox Model for COVID-19: Home Death",
+      align   = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format  = "latex",
+      booktabs = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+# Cox model
+
+## Reinfection
+
+
+```{r}
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil + polimed + factor(group),
+                  data = cov)
+
+etiquetes <- c(
+  "sexFemale"                  = "Sex (female)",
+  "age"                        = "Age (years)",
+  "charlson"                   = "CCI",
+  "quintil"                    = "Socioeconomic Quintile",
+  "polimed"                    = "Polymedication (yes)",
+  "factor(group)Hosp.(No ICU)" = "Group: Hospital (No ICU)",
+  "factor(group)ICU"           = "Group: ICU"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(etiquetes),
+               etiquetes[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption   = "Cox Model for COVID-19 Reinfection",
+      align     = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format    = "latex",
+      booktabs  = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4.5cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+## Death
+
+```{r}
+
+causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + polimed + factor(group),
+                  data = cov)
+
+etiquetes <- c(
+  "sexFemale"                  = "Sex (female)",
+  "age"                        = "Age (years)",
+  "charlson"                   = "CCI",
+  "quintil"                    = "Socioeconomic Quintile",
+  "polimed"                    = "Polymedication (yes)",
+  "factor(group)Hosp.(No ICU)" = "Group: Hospital (No ICU)",
+  "factor(group)ICU"           = "Group: ICU"
+)
+
+# Extract results
+resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
+
+# Apply custom labels (falls back to original term if label not found)
+noms <- ifelse(resultados$term %in% names(etiquetes),
+               etiquetes[resultados$term],
+               resultados$term)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = noms,
+  Beta     = round(resultados$estimate, 3),
+  SE       = round(resultados$std.error, 3),
+  HR       = round(resultados_hr$estimate, 3),
+  CI_lower = round(resultados_hr$conf.low, 3),
+  CI_upper = round(resultados_hr$conf.high, 3),
+  Z_stat   = round(resultados$statistic, 2),
+  p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
+                    round(resultados$p.value, 3))
+)
+
+# Display table
+kable(tabla_cox,
+      caption   = "Cox Model for COVID-19 Death",
+      align     = c('l', rep('c', 7)),
+      col.names = c("Variable", "Est.", "SE", "HR", "CI Low", "CI Up", "Z", "p"),
+      format    = "latex",
+      booktabs  = TRUE) %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"),
+                position   = "center",
+                font_size  = 9,
+                full_width = FALSE) %>%
+  column_spec(1, width = "4.5cm") %>%
+  column_spec(2:8, width = "1.3cm") %>%
+  add_header_above(c(" " = 3, "HR (95% CI)" = 3, " " = 2)) %>%
+  footnote(general = paste("n =", causmod1$n,
+                           "; Events =", causmod1$nevent,
+                           "; C-index =", round(summary(causmod1)$concordance[1], 2)),
+           threeparttable = TRUE)
+```
+
+## With time 
+```{r}
+
+causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil+polimed + factor(group)*hsptime,
+                  data = cov)
+
+# Extract results
+resultados <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
+
+# Create custom table
+tabla_cox <- data.frame(
+  Variable = resultados$term,
+  Beta = round(resultados$estimate, 3),
+  SE = round(resultados$std.error, 3),
+  CI_lower = round(resultados$conf.low, 3),
+  CI_upper = round(resultados$conf.high, 3),
+  Z_stat = round(resultados$statistic, 2),
+  p_value = ifelse(resultados$p.value < 0.001, "<0.001", 
+                   round(resultados$p.value, 3))
+)
+
+kable(tabla_cox, 
+      caption = "Cox Model for Covid-19 Death",
+      align = c('l', rep('c', 6)),
+      col.names = c("Variable", "Est.", "SE", "CI Low", "CI Up", "Z", "p"),
+      format = "latex",
+      booktabs = TRUE,
+      longtable = FALSE) %>%
+  kable_styling(
+      latex_options = c("HOLD_position", "scale_down"),
+      position = "center",
+      font_size = 9,
+      full_width = FALSE
+  ) %>%  
+  column_spec(1, width = "6cm") %>%    
+  column_spec(2:7, width = "1.4cm") %>%
+  footnote(
+      general = paste(
+        "n =", causmod1$n,
+        "; Events =", causmod1$nevent,
+        "; C-index =", round(summary(causmod1)$concordance[1], 2)
+      ),
+      threeparttable = TRUE
+  )
+```
+
+
