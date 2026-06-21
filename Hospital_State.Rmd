@@ -35,10 +35,10 @@ summary(hospital)
 variables_interes <- hospital %>% 
   select(age, polimed, delta, charlson, quintil, sex)
 
-# Resumen estadístico
+# Statistical summary
 summary(variables_interes)
 
-# Categorización de edad
+# Age categorization
 hospital$age_cat <- cut(hospital$age,
                      breaks = c(0, 40, 60, 75, 100),
                      labels = c("<40", "40-60", "60-75", ">75"))
@@ -49,9 +49,9 @@ print(prop.table(table(hospital$age_cat)) * 100)
 ## Polymedication
 
 ```{r}
-cat("Frecuencias absolutas:\n")
+cat("Absolute frequencies:\n")
 print(table(hospital$polimed))
-cat("\nProporciones:\n")
+cat("\nProportions:\n")
 print(prop.table(table(hospital$polimed)) * 100)
 ```
 
@@ -60,7 +60,7 @@ print(prop.table(table(hospital$polimed)) * 100)
 
 print(prop.table(table(hospital$delta)) * 100)
 
-# Crear variable más descriptiva
+# Create a more descriptive variable
 hospital$event_type <- factor(hospital$delta,
                            levels = c(0, 1, 2),
                            labels = c("Censored", "Reinfection", "Death"))
@@ -72,7 +72,7 @@ print(table(hospital$event_type))
 ## Charlson index
 ```{r}
 
-# Distribución por categorías
+# Distribution by category
 if(!"charlson_cat" %in% names(hospital)) {
   hospital$charlson_cat <- cut(hospital$charlson,
                             breaks = c(-1, 0, 2, 5, 20),
@@ -123,17 +123,17 @@ print(tapply(hospital$age, hospital$sex, summary))
 print(table(hospital$sex, hospital$event_type))
 print(prop.table(table(hospital$sex, hospital$event_type), 1) * 100)
 
-# resume
+# summary
 tabla_resumen <- hospital %>%
   group_by(event_type) %>%
   summarise(
     N = n(),
-    Edad_media = mean(age, na.rm = TRUE),
-    Edad_sd = sd(age, na.rm = TRUE),
-    Charlson_mediana = median(charlson, na.rm = TRUE),
+    Age_mean = mean(age, na.rm = TRUE),
+    Age_sd = sd(age, na.rm = TRUE),
+    Charlson_median = median(charlson, na.rm = TRUE),
     Charlson_IQR = IQR(charlson, na.rm = TRUE),
-    Pct_Polimed = sum(polimed == "Si", na.rm = TRUE) / n() * 100,
-    Pct_Hombre = sum(sex == "Hombre", na.rm = TRUE) / n() * 100
+    Pct_Polymed = sum(polimed == "Si", na.rm = TRUE) / n() * 100,   # "Si" matches the original data factor level, kept as is
+    Pct_Male = sum(sex == "Hombre", na.rm = TRUE) / n() * 100          # "Hombre" matches the original data factor level, kept as is
   )
 
 print(tabla_resumen)
@@ -142,13 +142,13 @@ print(tabla_resumen)
 ## graphs 
 ```{r}
 
-# Histograma de edad
+# Age histogram
 p1 <- ggplot(hospital, aes(x = age)) +
   geom_histogram(bins = 30, fill = "steelblue", color = "black") +
   labs(title = "Age distribution", x = "Age (years)", y = "Frequancy") +
   theme_minimal()
 
-# Distribución de Charlson
+# Charlson distribution
 p2 <- ggplot(hospital, aes(x = charlson)) +
   geom_histogram(bins = 15, fill = "coral", color = "black") +
   labs(title = "Charlson Index Distribution", 
@@ -158,7 +158,7 @@ p2 <- ggplot(hospital, aes(x = charlson)) +
 library(patchwork)
 fin <- p1 + p2
 
-# Guardar
+# Save
 ggsave(
   "dists_hosp.png",
   plot = fin,
@@ -167,7 +167,7 @@ ggsave(
   dpi = 300
 )
 
-# Barplot de eventos
+# Events barplot
 p3 <- ggplot(hospital, aes(x = event_type, fill = event_type)) +
   geom_bar() +
   labs(title = "Events distribution", x = "Types of events", y = "Frequency") +
@@ -183,7 +183,7 @@ ggsave(
 )
 
 
-# Edad por evento
+# Age by event
 p4 <- ggplot(hospital, aes(x = event_type, y = age, fill = event_type)) +
   geom_boxplot() +
   labs(title = "Age by type of Event", 
@@ -191,7 +191,7 @@ p4 <- ggplot(hospital, aes(x = event_type, y = age, fill = event_type)) +
   theme_minimal() +
   theme(legend.position = "none")
 
-# Mostrar gráficos
+# Show plots
 grid.arrange(p1, p2, p3, p4, ncol = 2)
 
 p5 <- ggplot(hospital, aes(x = factor(period), fill = factor(period))) +
@@ -208,7 +208,7 @@ p5 <- ggplot(hospital, aes(x = factor(period), fill = factor(period))) +
 
 
 
-# 6. Charlson categorizado por evento
+# 6. Charlson categorized by event
 p6 <- ggplot(hospital, aes(x = event_type, fill = charlson_cat)) +
   geom_bar(position = "fill") +
   labs(title = "Charlson Index by event", 
@@ -240,7 +240,7 @@ p8<-dat %>%
 
 fin <- p6 + p8
 
-# Guardar
+# Save
 ggsave(
   "relations_hosp.png",
   plot = fin,
@@ -377,12 +377,12 @@ dat %>%
   cor() %>%
   round(2) %>%
   ggcorrplot(
-    method      = "circle",      # "square" para cuadrados
+    method      = "circle",      # "square" for squares
     type        = "upper",
-    lab         = TRUE,          # muestra valores
+    lab         = TRUE,          # show values
     lab_size    = 3,
     colors      = c("#E63946", "white", "#3A86FF"),
-    title       = "Correlacions — Reinfection",
+    title       = "Correlations — Reinfection",
     ggtheme     = theme_minimal(base_size = 12)
   )
 ```
@@ -393,19 +393,19 @@ dat %>%
 
 ```{r}
 library(cmprsk)
-# Incidencia acumulada básica
+# Basic cumulative incidence
 ci_result <- with(hospital, cuminc(stime0, delta))
 
-# Ver resultados con más detalle (10 puntos temporales, 2 decimales)
+# View results in more detail (10 time points, 2 decimals)
 print(ci_result, ntp = 10, digits = 2)
 
-# Análisis de incidencia acumulada
+# Cumulative incidence analysis
 with(hospital, cuminc(stime0, delta))
 
-# Imprimir con más detalle
+# Print in more detail
 with(hospital, print(cuminc(stime0, delta), ntp = 10, digits = 2))
 
-# Gráfico mejorado con personalización
+# Improved plot with customization
 with(hospital, {
   ci <- cuminc(stime0, delta)
   ci2 <- ci[grep("1 1", names(ci))] # Survival curve
@@ -423,7 +423,7 @@ with(hospital, {
   
   axis(2, at = seq(0, 0.12, by = 0.01), las = 1)
   
-  # Añadir grid para mejor lectura
+  # Add grid for better readability
   grid(nx = NULL, ny = NULL, lty = 2, col = "gray90")
 })
 ```
@@ -433,19 +433,19 @@ library(ggplot2)
 
 with(hospital, {
 
-  # Incidencia acumulada
+  # Cumulative incidence
   ci <- cuminc(stime0, delta)
 
-  # Evento 1 = reinfección
+  # Event 1 = reinfection
   ci2 <- ci[["1 1"]]
 
-  # Data frame para ggplot
+  # Data frame for ggplot
   df <- data.frame(
     time = ci2$time,
     est  = ci2$est
   )
 
-  # Gráfico
+  # Plot
   p <- ggplot(df, aes(x = time, y = est)) +
     geom_step(
       color = "red",
@@ -477,10 +477,10 @@ with(hospital, {
       plot.title = element_text(hjust = 0.5)
     )
 
-  # Mostrar gráfico
+  # Show plot
   print(p)
 
-  # Guardar en alta resolución
+  # Save at high resolution
   ggsave(
     filename = "hospital_reinfection_cif.png",
     plot = p,
@@ -496,13 +496,13 @@ with(hospital, {
 library(cmprsk)
 
 # ============================================================
-# 1. ESTRATIFICADO POR PERÍODO hospital
+# 1. STRATIFIED BY hospital PERIOD
 # ============================================================
 
-# Crear objeto de incidencia acumulada FUERA del with()
+# Create cumulative incidence object OUTSIDE the with()
 ci_period <- with(hospital, cuminc(stime0, delta, group = period))
 
-# Ahora sí puedes graficar dentro del with()
+# Now you can plot inside the with()
 with(hospital, {
   ci_period_re <- ci_period[grep("1$", names(ci_period))]
   
@@ -518,17 +518,17 @@ with(hospital, {
 })
 png("cumulative_incidence_period_hosp.png", width = 2400, height = 1800, res = 300)
 # ============================================================
-# 2. ESTRATIFICADO POR ÍNDICE DE CHARLSON
+# 2. STRATIFIED BY CHARLSON INDEX
 # ============================================================
 
 hospital$charlson_cat <- cut(hospital$charlson,
                           breaks = c(-1, 0, 2, 5, 20),
                           labels = c("0", "1-2", "3-5", ">5"))
 
-# CREAR FUERA
+# CREATE OUTSIDE
 ci_charlson <- with(hospital, cuminc(stime0, delta, group = charlson_cat))
 
-# GRAFICAR DENTRO
+# PLOT INSIDE
 with(hospital, {
   ci_charlson_re <- ci_charlson[grep("1$", names(ci_charlson))]
   
@@ -546,7 +546,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 3. QUINTIL
+# 3. QUINTILE
 # ============================================================
 
 ci_quintil <- with(hospital, cuminc(stime0, delta, group = quintil))
@@ -568,7 +568,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 4. POLIMEDICACIÓN
+# 4. POLYMEDICATION
 # ============================================================
 
 ci_polimed <- with(hospital, cuminc(stime0, delta, group = polimed))
@@ -590,7 +590,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 6. SEXO
+# 6. SEX
 # ============================================================
 
 ci_sex <- with(hospital, cuminc(stime0, delta, group = sex))
@@ -613,7 +613,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 8. RESUMEN
+# 8. SUMMARY
 # ============================================================
 
 cat("\n=== SUMMARY OF GRAY'S TESTS ===\n\n")
@@ -659,18 +659,18 @@ ggplot(hospital, aes(x = event_type, y = hsptime, fill = event_type)) +geom_boxp
 
 ```{r,warning=FALSE, message=FALSE}
 library(cmprsk)
-# Incidencia acumulada básica
+# Basic cumulative incidence
 ci_result <- with(hospital, cuminc(hsptime, delta))
 
 print(ci_result, ntp = 10, digits = 2)
 
-# Análisis de incidencia acumulada
+# Cumulative incidence analysis
 with(hospital, cuminc(hsptime, delta))
 
-# Imprimir con más detalle
+# Print in more detail
 with(hospital, print(cuminc(hsptime, delta), ntp = 10, digits = 2))
 
-# Gráfico mejorado con personalización
+# Improved plot with customization
 with(hospital, {
   ci <- cuminc(hsptime, delta)
   ci2 <- ci[grep("1 1", names(ci))] # Survival curve
@@ -681,25 +681,25 @@ with(hospital, {
        xlab = "Days of hospital",
        ylab = "Cumulative Incidence",
        main = "Cumulative Incidence of Reinfection from hospital days",
-       col = c("blue", "red"), curvlab="Reinfection", # Colores para reinfección y muerte
+       col = c("blue", "red"), curvlab="Reinfection", # Colors for reinfection and death
        lwd = 2
   )
   
   axis(2, at = seq(0, 0.2, by = 0.02), las = 1)
   
-  # Añadir grid para mejor lectura
+  # Add grid for better readability
   grid(nx = NULL, ny = NULL, lty = 2, col = "gray90")
 })
 library(cmprsk)
 
 # ============================================================
-# 1. ESTRATIFICADO POR PERÍODO hospital
+# 1. STRATIFIED BY hospital PERIOD
 # ============================================================
 
-# Crear objeto de incidencia acumulada FUERA del with()
+# Create cumulative incidence object OUTSIDE the with()
 ci_period <- with(hospital, cuminc(hsptime, delta, group = period))
 
-# Ahora sí puedes graficar dentro del with()
+# Now you can plot inside the with()
 with(hospital, {
   ci_period_re <- ci_period[grep("1$", names(ci_period))]
   
@@ -717,17 +717,17 @@ with(hospital, {
 })
 
 # ============================================================
-# 2. ESTRATIFICADO POR ÍNDICE DE CHARLSON
+# 2. STRATIFIED BY CHARLSON INDEX
 # ============================================================
 
 hospital$charlson_cat <- cut(hospital$charlson,
                           breaks = c(-1, 0, 2, 5, 20),
                           labels = c("0", "1-2", "3-5", ">5"))
 
-# CREAR FUERA
+# CREATE OUTSIDE
 ci_charlson <- with(hospital, cuminc(hsptime, delta, group = charlson_cat))
 
-# GRAFICAR DENTRO
+# PLOT INSIDE
 with(hospital, {
   ci_charlson_re <- ci_charlson[grep("1$", names(ci_charlson))]
   
@@ -745,7 +745,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 3. QUINTIL
+# 3. QUINTILE
 # ============================================================
 
 ci_quintil <- with(hospital, cuminc(hsptime, delta, group = quintil))
@@ -767,7 +767,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 4. POLIMEDICACIÓN
+# 4. POLYMEDICATION
 # ============================================================
 
 ci_polimed <- with(hospital, cuminc(hsptime, delta, group = polimed))
@@ -789,7 +789,7 @@ with(hospital, {
 })
 
 # ============================================================
-# 6. SEXO
+# 6. SEX
 # ============================================================
 
 ci_sex <- with(hospital, cuminc(hsptime, delta, group = sex))
