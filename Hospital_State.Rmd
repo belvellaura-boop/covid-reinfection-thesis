@@ -427,15 +427,6 @@ with(hospital, {
   # Show plot
   print(p)
 
-  # Save at high resolution
-  ggsave(
-    filename = "hospital_reinfection_cif.png",
-    plot = p,
-    width = 8,
-    height = 6,
-    dpi = 300
-  )
-
 })
 ```
 
