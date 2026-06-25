@@ -132,8 +132,8 @@ tabla_resumen <- hospital %>%
     Age_sd = sd(age, na.rm = TRUE),
     Charlson_median = median(charlson, na.rm = TRUE),
     Charlson_IQR = IQR(charlson, na.rm = TRUE),
-    Pct_Polymed = sum(polimed == "Si", na.rm = TRUE) / n() * 100,   # "Si" matches the original data factor level, kept as is
-    Pct_Male = sum(sex == "Hombre", na.rm = TRUE) / n() * 100          # "Hombre" matches the original data factor level, kept as is
+    Pct_Polymed = sum(polimed == "Si", na.rm = TRUE) / n() * 100,   
+    Pct_Male = sum(sex == "Hombre", na.rm = TRUE) / n() * 100       
   )
 
 print(tabla_resumen)
@@ -155,32 +155,12 @@ p2 <- ggplot(hospital, aes(x = charlson)) +
        x = "Charlson Index", y = "Frequency") +
   theme_minimal()
 
-library(patchwork)
-fin <- p1 + p2
-
-# Save
-ggsave(
-  "dists_hosp.png",
-  plot = fin,
-  width = 12,
-  height = 5,
-  dpi = 300
-)
-
 # Events barplot
 p3 <- ggplot(hospital, aes(x = event_type, fill = event_type)) +
   geom_bar() +
   labs(title = "Events distribution", x = "Types of events", y = "Frequency") +
   theme_minimal() +
   theme(legend.position = "none")
-
-ggsave(
-  filename = "events_dist_hosp_bar.png",
-  plot = p3,
-  width = 8,
-  height = 4,
-  dpi = 300
-)
 
 
 # Age by event
@@ -225,29 +205,8 @@ p6 <- ggplot(hospital, aes(x = event_type, fill = charlson_cat)) +
     legend.text = element_text(size = 12)
   )
 
-p8<-dat %>%
-  filter(outcome == "Reinfection") %>%
-  ggplot(aes(x = hsptime, y = age)) +
-  geom_density_2d_filled(alpha = 0.7) +
-  labs(
-    title = "2D Density of Age and hospital time — Reinfection only",
-    x     = "hospital time",
-    y     = "Age",
-    fill  = "Density"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(legend.position = "right")
 
-fin <- p6 + p8
 
-# Save
-ggsave(
-  "relations_hosp.png",
-  plot = fin,
-  width = 12,
-  height = 5,
-  dpi = 300
-)
 
 grid.arrange(p5, p6, ncol = 2)
 ```
@@ -291,19 +250,7 @@ p9<-dat %>%
   theme_minimal(base_size = 12) +
   theme(legend.position = "top")
 
-ggsave(
-  filename = "corr_hosp.png",
-  plot = p9,
-  width = 8,
-  height = 4,
-  dpi = 300
-)
-```
-
-
-## age
-
-```{r}
+# Age
 p8<-dat %>%
   filter(outcome == "Reinfection") %>%
   ggplot(aes(x = hsptime, y = age)) +
@@ -317,8 +264,8 @@ p8<-dat %>%
   theme_minimal(base_size = 12) +
   theme(legend.position = "right")
 
-
 ```
+# Correlations
 
 ```{r}
 dat %>%
