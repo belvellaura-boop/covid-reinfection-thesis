@@ -72,12 +72,12 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
 
-# Create custom table
+# table
 tabla_cox <- data.frame(
   Variable = noms,
   Beta     = round(resultados$estimate, 3),
@@ -89,8 +89,7 @@ tabla_cox <- data.frame(
   p_value  = ifelse(resultados$p.value < 0.001, "<0.001",
                     round(resultados$p.value, 3))
 )
-
-# Display table
+# Display
 kable(tabla_cox,
       caption = "Cox Model for COVID-19: ICU Reinfection",
       align   = c('l', rep('c', 7)),
@@ -109,7 +108,8 @@ kable(tabla_cox,
                            "; C-index =", round(summary(causmod1)$concordance[1], 2)),
            threeparttable = TRUE)
 ```
-just hospital time
+With just hospital time
+
 ```{r}
 library(broom)
 library(knitr)
@@ -131,12 +131,12 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
 
-# Create custom table
+# Table
 tabla_cox <- data.frame(
   Variable = noms,
   Beta     = round(resultados$estimate, 3),
@@ -171,7 +171,7 @@ kable(tabla_cox,
 
 
 
-Just ICU time
+With just ICU time
 
 ```{r}
 # Cox model for reinfection (event = 1)
@@ -190,12 +190,12 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
 
-# Create custom table
+# Table
 tabla_cox <- data.frame(
   Variable = noms,
   Beta     = round(resultados$estimate, 3),
@@ -229,13 +229,14 @@ kable(tabla_cox,
 ```
 
 ```{r}
+#Corelation with times
 cor(icu$icutime,icu$hsptime)
 ```
 
-##  death event 
+##  Death event 
 
 ```{r}
-# Cox model for reinfection (event = 2)
+# Cox model (event = 2)
 causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + icutime, 
                   data = icu)
 
@@ -251,7 +252,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -291,7 +292,7 @@ kable(tabla_cox,
 
 
 ```{r}
-# Cox model for reinfection (event = 2)
+# Cox model (event = 2)
 causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + hsptime + icutime, 
                   data = icu)
 
@@ -308,7 +309,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -364,7 +365,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels 
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -432,12 +433,12 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
 
-# Create custom table
+#  Table
 tabla_cox <- data.frame(
   Variable = noms,
   Beta     = round(resultados$estimate, 3),
@@ -450,7 +451,7 @@ tabla_cox <- data.frame(
                     round(resultados$p.value, 3))
 )
 
-# Display table
+# Table
 kable(tabla_cox,
       caption = "Cox Model for COVID-19: Hospital Reinfection",
       align   = c('l', rep('c', 7)),
@@ -488,7 +489,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -530,7 +531,7 @@ kable(tabla_cox,
 
 
 ```{r}
-# Cox model for reinfection (event = 2)
+# Cox model (event = 2)
 causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + polimed, 
                   data = hospital)
 
@@ -546,7 +547,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -611,7 +612,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -653,7 +654,7 @@ kable(tabla_cox,
 
 
 ```{r}
-# Cox model for reinfection (event = 2)
+# Cox model (event = 2)
 causmod1 <- coxph(Surv(stime0, delta == 2) ~ sex + age + charlson + quintil + polimed, 
                   data = home)
 
@@ -669,7 +670,7 @@ label<- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels 
 noms <- ifelse(resultados$term %in% names(label),
                label[resultados$term],
                resultados$term)
@@ -707,7 +708,7 @@ kable(tabla_cox,
            threeparttable = TRUE)
 ```
 
-# Cox model
+# Cox model general
 
 ## Reinfection
 
@@ -730,7 +731,7 @@ etiquetes <- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(etiquetes),
                etiquetes[resultados$term],
                resultados$term)
@@ -788,7 +789,7 @@ etiquetes <- c(
 resultados    <- tidy(causmod1, conf.int = TRUE, exponentiate = FALSE)
 resultados_hr <- tidy(causmod1, conf.int = TRUE, exponentiate = TRUE)
 
-# Apply custom labels (falls back to original term if label not found)
+# Apply custom labels
 noms <- ifelse(resultados$term %in% names(etiquetes),
                etiquetes[resultados$term],
                resultados$term)
@@ -826,7 +827,8 @@ kable(tabla_cox,
            threeparttable = TRUE)
 ```
 
-## With time 
+## With time interaction
+
 ```{r}
 
 causmod1 <- coxph(Surv(stime0, delta == 1) ~ sex + age + charlson + quintil+polimed + factor(group)*hsptime,
